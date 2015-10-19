@@ -1,0 +1,131 @@
+package_install:
+  cmd.run:
+    - names:
+      - yum install -y openldap-clients nss-pam-ldapd pam_ldap openssh-ldap sssd authconfig --disablerepo=epel
+
+
+sysconfig:
+  cmd.run:
+    - names:
+      - authconfig --enablesssd --enablesssdauth  --ldapserver=ldaps://ldap.hunantv.com --ldapbasedn=dc=hunantv,dc=com --enableshadow --enablemkhomedir --enablelocauthorize --update
+
+nslcd_source:
+   file.managed:
+     - name: /etc/nslcd.conf
+     - source: salt://ldap_0_0_1/nslcd.conf
+     - user: root
+     - group: root
+     - mode: 600
+
+ldap_source:
+  file.managed:
+    - name: /etc/openldap/ldap.conf
+    - source: salt://ldap_0_0_1/ldap.conf
+
+nss_source:
+  file.managed:
+    - name: /etc/nsswitch.conf
+    - source: salt://ldap_0_0_1/nsswitch.conf
+
+pam_source:
+  file.managed:
+    - name: /etc/pam_ldap.conf
+    - source: salt://ldap_0_0_1/pam_ldap.conf
+
+
+sssd_source:
+  file.managed:
+    - name: /etc/sssd/sssd.conf
+    - source: salt://ldap_0_0_1/sssd.conf
+    - user: root
+    - group: root
+    - mode: 600
+
+sshd_source:
+  file.managed:
+    - name: /etc/pam.d/sshd
+    - source: salt://ldap_0_0_1/sshd
+
+system-auth_source:
+  file.managed:
+    - name: /etc/pam.d/system-auth
+    - source: salt://ldap_0_0_1/system-auth
+
+sudo_config:
+  cmd.run:
+    - names:
+      - unlink /etc/sudo-ldap.conf && ln -s /etc/openldap/ldap.conf /etc/sudo-ldap.conf
+    - require:
+      - file: ldap_source
+      - cmd: sysconfig
+
+sshdconfig_source:
+  file.managed:
+    - name: /etc/ssh/sshd_config
+    - source: salt://ldap_0_0_1/sshd_config
+  cmd.run:
+    - names:
+      - cp /etc/openldap/ldap.conf /etc/ssh/
+    - require:
+      - cmd: sudo_config
+
+ca_crt_source:
+  cmd.run:
+    - names: 
+      - mkdir -pv /etc/openldap/cacerts/
+  file.managed:
+    - name: /etc/openldap/cacerts/ldap-ca.crt
+    - source: salt://ldap_0_0_1/ldap-ca.crt
+    - user: root
+    - mode: 644
+
+
+/etc/bashrc:
+  file.append:
+    - text:
+      - export PROMPT_COMMAND='{ msg=$(history 1 | { read x y; echo $y; });logger -p user.info  "[euid=$(whoami)]":$(who am i):[`pwd`]"$msg"; }' 
+  cmd.run:
+    - names:
+       -  source /etc/bashrc
+  
+rsylog_conf:
+  cmd.run:
+    - names:
+      -  sed -i.bak.Old -e 's/#$UDPServerRun 514/$UDPServerRun 514'/g  -e 's/#$ModLoad imudp/$ModLoad imudp'/g  /etc/rsyslog.conf 
+  file.append:
+    - name: /etc/rsyslog.conf
+    - text: "user.info   @10.100.4.91"   
+
+nslcd:
+  service:
+    - running
+    - watch:
+      - file: /etc/nslcd.conf
+
+logrotate_conf:
+  file.append:
+    - name: /etc/logrotate.d/syslog
+    - text: "/var/log/command"
+  cmd.run:
+    - names: 
+      -  /etc/init.d/rsyslog restart
+
+nslcd_restart:
+  cmd.run:
+    - names:
+      - /etc/init.d/nslcd restart
+      - /sbin/chkconfig --add nslcd
+      - /sbin/chkconfig nslcd on
+sssd_restart:
+  cmd.run:
+    - names:
+      - /etc/init.d/sssd restart
+      - /sbin/chkconfig --add sssd
+      - /sbin/chkconfig  sssd on
+
+sshd_restart:
+  cmd.run:
+    - names:
+      - /etc/init.d/sshd restart
+      - /sbin/chkconfig --add sshd
+      - /sbin/chkconfig sshd on

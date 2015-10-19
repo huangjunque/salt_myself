@@ -1,0 +1,32 @@
+include:
+  - nginx_1_6_2.install
+
+nginx_conf:
+  file.managed:
+    - name: /usr/local/nginx/conf/nginx.conf
+    - source: salt://nginx_1_6_2/nginx.conf
+
+nginx_user:
+  cmd.run:
+    - name: useradd www
+    - unless: test -d /home/www
+
+nginx_service:
+  file.managed:
+    - name: /etc/init.d/nginx
+    - user: root
+    - mode: 755
+    - source: salt://nginx_1_6_2/nginx
+  cmd.run:
+    - names:
+      - /sbin/chkconfig --add nginx
+      - /sbin/chkconfig nginx on
+    - unless: /sbin/chkconfig --list nginx
+    - require:
+      - cmd: nginx_user
+  service.running:
+    - name: nginx
+    - reload: True
+    - watch:
+      - file: /usr/local/nginx/conf/nginx.conf
+

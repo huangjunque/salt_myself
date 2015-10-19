@@ -1,0 +1,151 @@
+php_source:
+  file.managed:
+    - name: /tmp/php-5.5.25.tar.gz
+    - unless: test -e /tmp/php-5.5.25.tar.gz
+    - source: salt://php_5_5_25/php-5.5.25.tar.gz
+
+php_devel:
+  cmd.run:
+    - names:
+      -  yum install mysql libcurl libcurl-devel mysql-devel mysql-server libxml2 libxml2-devel libmcrypt libmcrypt-devel mysql-libs libjpeg-turbo-devel libpng-devel  freetype-develgd  gcc bison bison-devel zlib-devel libmcrypt-devel mcrypt mhash-devel openssl-devel libxml2-devel libcurl-devel bzip2-devel readline-devel libedit-devel sqlite-devel  freetype freetype-devel php-devel  php-pear  -y
+
+php_tar:
+  cmd.run:
+    - cwd: /tmp
+    - names:
+      - tar -zxvf /tmp/php-5.5.25.tar.gz
+    - require:
+      - cmd: php_devel
+      - file: php_source
+
+php_configure:
+  cmd.run:
+    - names:
+      - cd /tmp/php-5.5.25  &&  ./configure  --prefix=/usr/local/php-5.5 --with-fpm-user=www --with-fpm-group=www --with-config-file-path=/usr/local/php-5.5/etc --with-bz2 --enable-calendar --enable-dba=shared --enable-sockets --enable-fpm --enable-opcache -with-iconv-dir=/usr/local/lib --with-mysql=mysqlnd --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-freetype-dir --with-jpeg-dir --with-png-dir --with-zlib --with-libxml-dir=/usr --enable-xml --disable-debug --disable-rpath --enable-bcmath --enable-shmop --enable-sysvsem --enable-inline-optimization --with-curl --enable-mbregex --enable-mbstring --with-mcrypt --enable-ftp --with-gd  --with-sqlite=shared --with-pdo-sqlite=shared --enable-sqlite-utf8 --with-openssl --enable-soap --enable-pdo && make && make install 
+    - require:
+      - cmd: php_tar
+
+#php_make:
+#  cmd.run:
+#    - names:
+#      - cd /tmp/php-5.5.25 
+#      - make -j8
+#    - require:
+#      - cmd: php_configure
+#
+#
+#php_make_install:
+#  cmd.run:
+#    - names:
+#      - cd /tmp/php-5.5.25 
+#      - make install
+#    - require:
+#      - cmd: php_make
+#
+
+php_conf:
+  cmd.run:
+    - names:
+      - \cp -fv /tmp/php-5.5.25/php.ini-development /usr/local/php-5.5/etc/php.ini
+      - \cp -v /usr/local/php-5.5/etc/{php-fpm.conf.default,php-fpm.conf}
+    - require:
+      - cmd: php_configure
+
+
+redis_source:
+  file.managed:
+    - name: /tmp/redis-2.2.4.tgz
+    - unless: test -e /tmp/redis-2.2.4.tgz
+    - source: salt://php_5_5_25/redis-2.2.4.tgz
+
+memcache_source:
+  file.managed:
+    - name: /tmp/memcache-2.2.7.tgz
+    - unless: test -e /tmp/memcache-2.2.7.tgz
+    - source: salt://php_5_5_25/memcache-2.2.7.tgz
+
+sqlite_source:
+  file.managed:
+    - name: /tmp/sqlite.zip
+    - unless: test -e /tmp/sqlite.zip
+    - source: salt://php_5_5_25/sqlite.zip
+
+redis_config:
+  cmd.run:
+    - cwd: /tmp 
+    - names:
+      - tar -xvf redis-2.2.4.tgz 
+      - cd /tmp/redis-2.2.4 && /usr/local/php-5.5/bin/phpize
+      - cd /tmp/redis-2.2.4 && ./configure --with-php-config=/usr/local/php-5.5/bin/php-config 
+      - egrep  '[^;]extension=redis.so' /usr/local/php-5.5/etc/php.ini || echo 'extension=redis.so' >> /usr/local/php-5.5/etc/php.ini
+
+
+redis_make:
+  cmd.run:
+    - cwd: /tmp
+    - names:
+      - cd /tmp/redis-2.2.4
+      - make && make install
+
+
+
+memcache_config:
+  cmd.run:
+    - cwd: /tmp
+    - names:
+      - tar -xvf  memcache-2.2.7.tgz
+      - cd /tmp/memcache-2.2.7 && /usr/local/php-5.5/bin/phpize
+      - cd /tmp/memcache-2.2.7 && ./configure --enable-memcache -with-php-config=/usr/local/php-5.5/bin/php-config 
+      - egrep '[^;]extension=memcache.so' /usr/local/php-5.5/etc/php.ini || echo 'extension=memcache.so' >> /usr/local/php-5.5/etc/php.ini
+      - require:
+        - cmd: php_configure 
+
+
+memcache_make:
+  cmd.run:
+    - cwd: /tmp
+    - names:
+      - cd /tmp/memcache-2.2.7 && make && make install
+
+dba_conf:
+  cmd.run:
+    - cwd: /tmp
+    - names:
+      - cd /tmp/php-5.5.25/ext/dba && /usr/local/php-5.5/bin/phpize
+      - cd /tmp/php-5.5.25/ext/dba && ./configure --enable-dba  --with-php-config=/usr/local/php-5.5/bin/php-config   && make && make install
+      - egrep '[^;]extension=dba.so' /usr/local/php-5.5/etc/php.ini || echo 'extension=dba.so' >> /usr/local/php-5.5/etc/php.ini
+      - require:
+        - cmd: php_configure
+
+sqllite_conf:
+  cmd.run:
+    - cwd: /tmp
+    - names:
+      - unzip  sqlite.zip 
+      - cd /tmp/sqlite/ && /usr/local/php-5.5/bin/phpize
+      - cd /tmp/sqlite/ && ./configure --with-php-config=/usr/local/php-5.5/bin/php-config  && make && make install
+      - egrep '[^;]extension=sqlite.so' /usr/local/php-5.5/etc/php.ini || echo 'extension=sqlite.so' >> /usr/local/php-5.5/etc/php.ini
+      - require:
+        - cmd: php_configure
+
+#pdo_sqlite:
+#  cmd.run:
+#    - cwd: /tmp
+#    - names: 
+#      - cd /tmp/php-5.5.25/ext/pdo_sqlite  && /usr/local/php-5.5/bin/phpize
+#      - cd /tmp/php-5.5.25/ext/pdo_sqlite &&  ./configure --with-php-config=/usr/local/php-5.5/bin/php-config   
+#      - egrep '[^;]extension=pdo_sqlite.so' /usr/local/php-5.5/etc/php.ini || echo 'extension=pdo_sqlite.so' >> /usr/local/php-5.5/etc/php.ini
+#
+#pdo_make:
+#  cmd.run:
+#    - names:
+#      - cd /tmp/php-5.5.25/ext/pdo_sqlite
+#      - make 
+#      - make install
+
+php_fpm_conf:
+  cmd.run:
+    - names:
+      - sed -i.bak 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/' /usr/local/php-5.5/etc/php.ini
+      - sed -i.bak -re 's/((\s+|)listen(\s+|)=(\s+|)127.0.0.1(\s+|):).*/\19004/' /usr/local/php-5.5/etc/php-fpm.conf
+

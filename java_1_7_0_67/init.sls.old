@@ -1,0 +1,12 @@
+jdk-file:
+ file.managed:
+   - source: salt://java_1_8_0/jdk-8u40-linux-x64.rpm
+   - name: /tmp/jdk-8u40-linux-x64.rpm
+   - unless: test -e /tmp/jdk-8u40-linux-x64.rpm
+
+jdk-install:
+ cmd.run:
+   - cwd: /tmp
+   - name: rpm -ivh /tmp/jdk-8u40-linux-x64.rpm
+   - require:
+     - file: jdk-file

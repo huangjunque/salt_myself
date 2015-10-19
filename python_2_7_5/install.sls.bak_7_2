@@ -1,0 +1,34 @@
+/tmp:
+  file.directory: []
+
+python275_source:
+  file.managed:
+    - name: /tmp/Python-2.7.5.tgz
+    - source: salt://python_2_7_5/Python-2.7.5.tgz
+
+python275_pkgs:
+  pkg.installed:
+    - pkgs: [expat-devel,python-devel,python-virtualenv]  
+
+python275_install:
+  cmd.run:
+    - cwd: /tmp
+    - names: 
+      - cd /tmp/ && tar zvxf /tmp/Python-2.7.5.tgz
+
+
+
+python275_install_2:
+  cmd.run:
+    - cwd: /tmp
+    - name: cd /tmp/Python-2.7.5 && ./configure && make && make install
+    - require:
+      - cmd: python275_install
+
+update_python_shebang:
+  cmd.run:
+    - unless: '[[ `cat /usr/bin/yum` =~ "/usr/bin/python2" ]]'
+    - name: find /**/*bin -name "*" | xargs grep -l "/usr/bin/python" | xargs sed -i "s/#\!\/usr\/bin\/python\([^2]*\)$/#\!\/usr\/bin\/python2.6\1/"
+    - require:
+      - cmd: python275_install
+

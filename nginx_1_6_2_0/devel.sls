@@ -1,0 +1,10 @@
+openssl:
+  pkg.installed
+openssl-devel:
+  pkg.installed
+perl:
+  pkg.installed
+perl-devel:
+  pkg.installed
+perl-ExtUtils-Embed:
+  pkg.installed

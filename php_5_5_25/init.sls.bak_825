@@ -1,0 +1,74 @@
+php_source:
+  file.managed:
+    - name: /tmp/php-5.5.25.tar.gz
+    - unless: test -e /tmp/php-5.5.25.tar.gz
+    - source: salt://php_5_5_25/php-5.5.25.tar.gz
+
+
+
+
+php_devel:
+  cmd.run:
+    - names:
+      -  yum install mysql libcurl libcurl-devel mysql-devel mysql-server libxml2 libxml2-devel libmcrypt libmcrypt-devel mysql-libs libjpeg-turbo-devel libpng-devel  freetype-develgd  gcc bison bison-devel zlib-devel libmcrypt-devel mcrypt mhash-devel openssl-devel libxml2-devel libcurl-devel bzip2-devel readline-devel libedit-devel sqlite-devel  freetype freetype-devel php-devel  php-pear  -y
+
+php_tar:
+  cmd.run:
+    - cwd: /tmp
+    - names:
+      - tar -zxvf /tmp/php-5.5.25.tar.gz
+    - require:
+#     - cmd: php_devel
+      - file: php_source
+
+php_configure:
+  cmd.run:
+    - names:
+      - cd /tmp/php-5.5.25  &&  ./configure  --prefix=/usr/local/php-5.5 --with-fpm-user=www --with-fpm-group=www --with-config-file-path=/usr/local/php-5.5/etc --with-bz2 --enable-calendar --enable-dba=shared --enable-sockets --enable-fpm --enable-opcache -with-iconv-dir=/usr/local/lib --with-mysql=mysqlnd --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-freetype-dir --with-jpeg-dir --with-png-dir --with-zlib --with-libxml-dir=/usr --enable-xml --disable-debug --disable-rpath --enable-bcmath --enable-shmop --enable-sysvsem --enable-inline-optimization --with-curl --enable-mbregex --enable-mbstring --with-mcrypt --enable-ftp --with-gd  --with-sqlite=shared --with-pdo-sqlite=shared --enable-sqlite-utf8 --with-openssl --enable-soap --enable-pdo && make && make install 
+    - require:
+      - cmd: php_tar
+
+#php_make:
+#  cmd.run:
+#    - names:
+#      - cd /tmp/php-5.5.25 
+#      - make -j8
+#    - require:
+#      - cmd: php_configure
+#
+#
+php_conf:
+  cmd.run:
+    - names:
+      - \cp -fv /tmp/php-5.5.25/php.ini-development /usr/local/php-5.5/etc/php.ini
+      - \cp -v /usr/local/php-5.5/etc/{php-fpm.conf.default,php-fpm.conf}
+
+
+
+
+redis_source:
+  file.managed:
+    - name: /tmp/redis-2.2.4.tgz
+    - unless: test -e /tmp/redis-2.2.4.tgz
+    - source: salt://php_5_5_25/redis-2.2.4.tgz
+  cmd.run:
+    - names:
+      - cd /tmp/redis-2.2.4 && make && make install
+
+memcache_source:
+  file.managed:
+    - name: /tmp/memcache-2.2.7.tgz
+    - unless: test -e /tmp/memcache-2.2.7.tgz
+    - source: salt://php_5_5_25/memcache-2.2.7.tgz
+
+sqlite_source:
+  file.managed:
+    - name: /tmp/sqlite.zip
+    - unless: test -e /tmp/sqlite.zip
+    - source: salt://php_5_5_25/sqlite.zip
+
+
+
+
+
+
